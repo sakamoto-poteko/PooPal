@@ -15,6 +15,8 @@ set(COMPONENT_SRCS
     "wifi.c"
     "led.h"
     "led.c"
+    "timeman.h"
+    "timeman.c"
     )
 set(COMPONENT_ADD_INCLUDEDIRS ".")
 

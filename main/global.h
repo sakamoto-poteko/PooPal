@@ -47,7 +47,7 @@
 
 #define BODY_DETECTION_PIN 21
 #define BODY_DETECTION_DEFAULT_ENABLED true
-#define BODY_DETECTION_DEFAULT_DELAY_SECONDS 60
+#define BODY_DETECTION_DEFAULT_GRACE_PERIOD_SECONDS 60
 #define BODY_DETECTION_LOW_ACTIVE false // Inverted?
 
 #define DEVICE_STATUS_PUBLISH_INTERVAL_MS 2000
@@ -58,6 +58,7 @@
 #define LOG_TAG_DEVICE_CONTROL "devctrl"
 #define LOG_TAG_BODY_DETECTION "bodydet"
 #define LOG_TAG_LED "led"
+#define LOG_TAG_TIMEMAN "timeman"
 
 #define UNUSED(x) (void)(x)
 #define fldsiz(name, field) \
