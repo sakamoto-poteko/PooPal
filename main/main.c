@@ -22,24 +22,25 @@
  **************************************************************************/
 // <END LICENSE>
 
-#include "esp_log.h"
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "nvs_flash.h"
-#include "driver/gpio.h"
-
 #include <string.h>
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
+
+#include "driver/gpio.h"
+#include "esp_log.h"
 #include "mqtt_client.h"
+#include "nvs_flash.h"
 
 #include "global.h"
-#include "status.h"
-#include "tasks.h"
-#include "datalink.h"
+
 #include "bodydetection.h"
-#include "wifi.h"
+#include "datalink.h"
 #include "devicecontrollogic.h"
 #include "led.h"
+#include "status.h"
+#include "tasks.h"
+#include "wifi.h"
 
 void app_main()
 {
@@ -95,7 +96,7 @@ void app_main()
     start_device_control_logic();
     start_body_detection();
     start_wifi();
-    
+
     connect_wifi();
     start_mqtt();
 
@@ -103,6 +104,4 @@ void app_main()
     xTaskCreate(collect_device_status_task, "collect_device_status_task", 4096, NULL, 0, NULL);
     // Start task to publish device status, idle task
     xTaskCreate(publish_device_status_task, "publish_device_status_task", 4096, NULL, 0, NULL);
-
-
 }

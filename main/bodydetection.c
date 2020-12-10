@@ -25,10 +25,12 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
 #include "freertos/task.h"
+
 #include "driver/gpio.h"
 #include "esp_log.h"
 
 #include "global.h"
+
 #include "bodydetection.h"
 #include "devicecontrollogic.h"
 
@@ -46,9 +48,9 @@ static void body_detection_task(void* arg)
 {
     UNUSED(arg);
     int level;
-    for(;;) {
-        if(xQueueReceive(body_detection_gpio_queue, &level, portMAX_DELAY)) {
-            if (BODY_DETECTION_LOW_ACTIVE) {    // Inverted
+    for (;;) {
+        if (xQueueReceive(body_detection_gpio_queue, &level, portMAX_DELAY)) {
+            if (BODY_DETECTION_LOW_ACTIVE) { // Inverted
                 body_detected = !level;
             } else {
                 body_detected = level;
@@ -73,7 +75,6 @@ void init_body_detection()
 
     body_detection_gpio_queue = xQueueCreate(10, sizeof(int));
 }
-
 
 void start_body_detection()
 {

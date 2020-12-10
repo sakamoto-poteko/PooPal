@@ -22,24 +22,25 @@
  **************************************************************************/
 // <END LICENSE>
 
-#include <string.h>
 #include <math.h>
+#include <string.h>
+
+#include "freertos/FreeRTOS.h"
+#include "freertos/event_groups.h"
 
 #include "esp_event.h"
 #include "esp_log.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
 
-#include "freertos/FreeRTOS.h"
-#include "freertos/event_groups.h"
-
 #include "lwip/err.h"
 #include "lwip/sys.h"
 
 #include "global.h"
+
+#include "devicecontrollogic.h"
 #include "status.h"
 #include "wifi.h"
-#include "devicecontrollogic.h"
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t wifi_event_group;
@@ -85,7 +86,7 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
         evt.event_type = DEVICE_CONTROL_EVENT_WIFI_CONNECTED;
         device_control_send_event(&evt);
 
-        ip_event_got_ip_t* event = (ip_event_got_ip_t*) event_data;
+        ip_event_got_ip_t* event = (ip_event_got_ip_t*)event_data;
         ESP_LOGI(LOG_TAG_WIFI, "WiFi IP acquired: " IPSTR, IP2STR(&event->ip_info.ip));
     }
 }
@@ -135,7 +136,7 @@ void connect_wifi(void)
 {
     wifi_ap_record_t apinfo = {};
     esp_err_t con = esp_wifi_sta_get_ap_info(&apinfo);
-    if (con == ESP_OK) {    // Already connected
+    if (con == ESP_OK) { // Already connected
         return;
     }
 
@@ -151,7 +152,7 @@ void connect_wifi(void)
     }
 }
 
-void set_wifi_security(wifi_security security, const uint8_t *ssid, size_t ssid_len, const uint8_t *credentials, size_t credentials_len)
+void set_wifi_security(wifi_security security, const uint8_t* ssid, size_t ssid_len, const uint8_t* credentials, size_t credentials_len)
 {
     ESP_LOGI(LOG_TAG_WIFI, "setting WiFi security mode 0x%0X, ssid %.*s", security, ssid_len, ssid);
 
@@ -160,29 +161,26 @@ void set_wifi_security(wifi_security security, const uint8_t *ssid, size_t ssid_
             .threshold.authmode = WIFI_AUTH_WPA2_PSK,
             .pmf_cfg = {
                 .capable = true,
-                .required = false
-            }
-        }
+                .required = false } }
     };
 
     switch (security) {
     case WIFI_SEC_WEP:
     case WIFI_SEC_WPA_WPA2_PSK:
-        strncpy((char *)wifi_config.sta.password, (const char *)credentials, MIN(credentials_len, WIFI_PASSWORD_MAX_LEN))[WIFI_PASSWORD_MAX_LEN - 1] = 0;
+        strncpy((char*)wifi_config.sta.password, (const char*)credentials, MIN(credentials_len, WIFI_PASSWORD_MAX_LEN))[WIFI_PASSWORD_MAX_LEN - 1] = 0;
         // fall through
     case WIFI_SEC_OPEN:
-        strncpy((char *)wifi_config.sta.ssid, (const char *)ssid, MIN(ssid_len, WIFI_SSID_MAX_LEN))[WIFI_SSID_MAX_LEN - 1] = 0;
+        strncpy((char*)wifi_config.sta.ssid, (const char*)ssid, MIN(ssid_len, WIFI_SSID_MAX_LEN))[WIFI_SSID_MAX_LEN - 1] = 0;
         ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
         ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
         break;
-     default:
+    default:
         ESP_LOGE(LOG_TAG_WIFI, "unrecognized wifi_security");
         abort();
     }
 
     ESP_LOGI(LOG_TAG_WIFI, "WiFi security set");
 }
-
 
 void reconnect_wifi()
 {

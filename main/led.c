@@ -23,13 +23,15 @@
 // <END LICENSE>
 
 #include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
 #include "freertos/event_groups.h"
+#include "freertos/task.h"
+
 #include "driver/ledc.h"
 #include "esp_err.h"
 #include "esp_log.h"
 
 #include "global.h"
+
 #include "led.h"
 
 #define LED1_TIMER LEDC_TIMER_0
@@ -44,17 +46,13 @@
 
 static EventGroupHandle_t led_control_event_group;
 
-
 static ledc_channel_config_t ledc_channel[LED_COUNT] = {
-    {
-        .channel    = LED1_CHANNEL,
-        .duty       = 0,
-        .gpio_num   = LED_1_PIN,
+    { .channel = LED1_CHANNEL,
+        .duty = 0,
+        .gpio_num = LED_1_PIN,
         .speed_mode = LEDC_LOW_SPEED_MODE,
-        .timer_sel  = LED1_TIMER
-    },
+        .timer_sel = LED1_TIMER },
 };
-
 
 typedef enum {
     LED_OFF,
@@ -87,8 +85,7 @@ void led_control(int led_idx)
         ledc_update_duty(ledc_channel[led_idx].speed_mode, ledc_channel[led_idx].channel);
         xEventGroupWaitBits(led_control_event_group, LED_CONTROL_EVENT_GROUP_BIT(led_idx), pdTRUE, pdFALSE, portMAX_DELAY);
         break;
-    case LED_FLASH:
-    {
+    case LED_FLASH: {
         int dutycycle = 0;
         if (led_status[led_idx]) {
             dutycycle = 0;
@@ -103,46 +100,43 @@ void led_control(int led_idx)
         xEventGroupWaitBits(led_control_event_group, LED_CONTROL_EVENT_GROUP_BIT(led_idx), pdTRUE, pdFALSE, wait);
         break;
     }
-    case LED_FADE_IN:
-    {
+    case LED_FADE_IN: {
         ledc_set_duty(ledc_channel[led_idx].speed_mode, ledc_channel[led_idx].channel, 0);
         ledc_update_duty(ledc_channel[led_idx].speed_mode, ledc_channel[led_idx].channel);
         ledc_set_fade_with_time(ledc_channel[led_idx].speed_mode,
-                                ledc_channel[led_idx].channel, LED_DUTYCYCLE_FULL, led_info[led_idx].on_time_ms);
+            ledc_channel[led_idx].channel, LED_DUTYCYCLE_FULL, led_info[led_idx].on_time_ms);
         ledc_fade_start(ledc_channel[led_idx].speed_mode,
-                        ledc_channel[led_idx].channel, LEDC_FADE_NO_WAIT);
+            ledc_channel[led_idx].channel, LEDC_FADE_NO_WAIT);
         TickType_t wait = led_info[led_idx].on_time_ms / portTICK_PERIOD_MS;
         xEventGroupWaitBits(led_control_event_group, LED_CONTROL_EVENT_GROUP_BIT(led_idx), pdTRUE, pdFALSE, wait);
         break;
     }
-    case LED_FADE_OUT:
-    {
+    case LED_FADE_OUT: {
         ledc_set_duty(ledc_channel[led_idx].speed_mode, ledc_channel[led_idx].channel, LED_DUTYCYCLE_FULL);
         ledc_update_duty(ledc_channel[led_idx].speed_mode, ledc_channel[led_idx].channel);
         ledc_set_fade_with_time(ledc_channel[led_idx].speed_mode,
-                                ledc_channel[led_idx].channel, 0, led_info[led_idx].off_time_ms);
+            ledc_channel[led_idx].channel, 0, led_info[led_idx].off_time_ms);
         ledc_fade_start(ledc_channel[led_idx].speed_mode,
-                        ledc_channel[led_idx].channel, LEDC_FADE_NO_WAIT);
+            ledc_channel[led_idx].channel, LEDC_FADE_NO_WAIT);
         TickType_t wait = led_info[led_idx].off_time_ms / portTICK_PERIOD_MS;
         xEventGroupWaitBits(led_control_event_group, LED_CONTROL_EVENT_GROUP_BIT(led_idx), pdTRUE, pdFALSE, wait);
         break;
     }
-    case LED_FADE_IN_OUT:
-    {
+    case LED_FADE_IN_OUT: {
         ledc_set_duty(ledc_channel[led_idx].speed_mode, ledc_channel[led_idx].channel, 0);
         ledc_update_duty(ledc_channel[led_idx].speed_mode, ledc_channel[led_idx].channel);
         // In
         ledc_set_fade_with_time(ledc_channel[led_idx].speed_mode,
-                                ledc_channel[led_idx].channel, LED_DUTYCYCLE_FULL, led_info[led_idx].on_time_ms);
+            ledc_channel[led_idx].channel, LED_DUTYCYCLE_FULL, led_info[led_idx].on_time_ms);
         ledc_fade_start(ledc_channel[led_idx].speed_mode,
-                        ledc_channel[led_idx].channel, LEDC_FADE_NO_WAIT);
+            ledc_channel[led_idx].channel, LEDC_FADE_NO_WAIT);
         TickType_t wait_in = led_info[led_idx].on_time_ms / portTICK_PERIOD_MS;
         xEventGroupWaitBits(led_control_event_group, LED_CONTROL_EVENT_GROUP_BIT(led_idx), pdTRUE, pdFALSE, wait_in);
         // Out
         ledc_set_fade_with_time(ledc_channel[led_idx].speed_mode,
-                                ledc_channel[led_idx].channel, 0, led_info[led_idx].on_time_ms);
+            ledc_channel[led_idx].channel, 0, led_info[led_idx].on_time_ms);
         ledc_fade_start(ledc_channel[led_idx].speed_mode,
-                        ledc_channel[led_idx].channel, LEDC_FADE_NO_WAIT);
+            ledc_channel[led_idx].channel, LEDC_FADE_NO_WAIT);
         TickType_t wait_out = led_info[led_idx].on_time_ms / portTICK_PERIOD_MS;
         xEventGroupWaitBits(led_control_event_group, LED_CONTROL_EVENT_GROUP_BIT(led_idx), pdTRUE, pdFALSE, wait_out);
         break;
@@ -152,7 +146,7 @@ void led_control(int led_idx)
     }
 }
 
-void task_led_control_led1(void *pv)
+void task_led_control_led1(void* pv)
 {
     UNUSED(pv);
     while (true) {
@@ -168,9 +162,9 @@ void init_led()
      */
     ledc_timer_config_t ledc_timer = {
         .duty_resolution = LEDC_TIMER_15_BIT, // resolution of PWM duty
-        .freq_hz = LED_PWM_FREQUENCY,                      // frequency of PWM signal
-        .speed_mode = LEDC_LOW_SPEED_MODE,           // timer mode
-        .timer_num = LED1_TIMER            // timer index
+        .freq_hz = LED_PWM_FREQUENCY, // frequency of PWM signal
+        .speed_mode = LEDC_LOW_SPEED_MODE, // timer mode
+        .timer_num = LED1_TIMER // timer index
     };
     ledc_timer_config(&ledc_timer);
 
@@ -220,12 +214,11 @@ void set_led_off(Led led)
 void set_led_flash(Led led, int on_time_ms)
 {
     led_info[led].ctrl = LED_FLASH;
-    led_info[led].on_time_ms= on_time_ms;
+    led_info[led].on_time_ms = on_time_ms;
     led_status[led] = 0;
     xEventGroupSetBits(led_control_event_group, LED_CONTROL_EVENT_GROUP_BIT(led));
     ESP_LOGI(LOG_TAG_LED, "setting led %d flash, on %dms", led, on_time_ms);
 }
-
 
 void set_led_on_off(Led led, int on_off)
 {

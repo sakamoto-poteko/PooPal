@@ -33,17 +33,17 @@
 #include "nvs.h"
 
 #include "global.h"
-#include "devicecontrollogic.h"
+
 #include "bodydetection.h"
-#include "wifi.h"
+#include "devicecontrollogic.h"
 #include "led.h"
 #include "timeman.h"
+#include "wifi.h"
 
 #define NVS_KEY_CONFIG_BODY_DETECTION_ENABLED "bodydet"
 #define NVS_KEY_CONFIG_BODY_DETECTION_GRACE_PERIOD "bodydetdelay"
 
-typedef struct device_control_config_t
-{
+typedef struct device_control_config_t {
     bool body_detection_enabled;
     uint body_detection_delay_seconds;
 } device_control_config;
@@ -75,89 +75,81 @@ void body_detection_grace_period_timeout(TimerHandle_t xTimer)
     // TODO: add it to mqtt send queue
 }
 
-static void device_control_task(void *arg)
+static void device_control_task(void* arg)
 {
     UNUSED(arg);
-    for (;;)
-    {
+    for (;;) {
         heap_caps_check_integrity_all(true);
         device_control_event event = {};
-        if (xQueueReceive(_device_control_event_queue, &event, portMAX_DELAY))
-        {
-            switch (event.event_type)
-            {
-                // Body detection
+        if (xQueueReceive(_device_control_event_queue, &event, portMAX_DELAY)) {
+            switch (event.event_type) {
+            // Body detection
 
-                // enable body detection
-                case DEVICE_CONTROL_EVENT_BODY_DETECTION_ENABLED:
-                    _config.body_detection_enabled = true;
-                    write_nvs_config_body_detection_enabled(true);
-                    break;
-                
-                // disable body detection
-                case DEVICE_CONTROL_EVENT_BODY_DETECTION_DISABLED:
-                    _config.body_detection_enabled = false;
-                    write_nvs_config_body_detection_enabled(false);
-                    break;
+            // enable body detection
+            case DEVICE_CONTROL_EVENT_BODY_DETECTION_ENABLED:
+                _config.body_detection_enabled = true;
+                write_nvs_config_body_detection_enabled(true);
+                break;
 
-                // set body detection grace
-                case DEVICE_CONTROL_EVENT_BODY_DETECTION_DELAY_CHANGED:
-                    _config.body_detection_delay_seconds = event.body_detection_delay_seconds;
-                    write_nvs_config_body_detection_grace_period(event.body_detection_delay_seconds);
-                    _body_detection_delay_grace_period_ticks = _config.body_detection_delay_seconds * 1000 / portTICK_PERIOD_MS;
-                    break;
+            // disable body detection
+            case DEVICE_CONTROL_EVENT_BODY_DETECTION_DISABLED:
+                _config.body_detection_enabled = false;
+                write_nvs_config_body_detection_enabled(false);
+                break;
 
-                // body detection triggered
-                case DEVICE_CONTROL_EVENT_BODY_DETECTION_TRIGGERED:
-                {
-                    int detected = get_body_detected();
-                    if (_config.body_detection_enabled)
-                    {
-                        if (detected)
-                        {
-                            // set body detected to true
-                            _body_detected = true;
+            // set body detection grace
+            case DEVICE_CONTROL_EVENT_BODY_DETECTION_DELAY_CHANGED:
+                _config.body_detection_delay_seconds = event.body_detection_delay_seconds;
+                write_nvs_config_body_detection_grace_period(event.body_detection_delay_seconds);
+                _body_detection_delay_grace_period_ticks = _config.body_detection_delay_seconds * 1000 / portTICK_PERIOD_MS;
+                break;
 
-                            // stop the grace period timer, since
-                            // 1. if it's in grace period now: we're merging two detections
-                            // 2. if it's not in grace period: the timer isn't running anyway
-                            // TODO:
+            // body detection triggered
+            case DEVICE_CONTROL_EVENT_BODY_DETECTION_TRIGGERED: {
+                int detected = get_body_detected();
+                if (_config.body_detection_enabled) {
+                    if (detected) {
+                        // set body detected to true
+                        _body_detected = true;
 
-                            // if this is a new detection, i.e. not in grace period
-                            // store the time now as start time
-                            // TODO:
-                            // else, i.e. detected in grace period
-                            // the start time is not changed
-                            // TODO:
-                        }
-                        else
-                        {
-                            // body has gone. start the grace period timer
-                            xTimerChangePeriod(_body_detection_grace_period_timer, _body_detection_delay_grace_period_ticks, portMAX_DELAY);
-                        }
+                        // stop the grace period timer, since
+                        // 1. if it's in grace period now: we're merging two detections
+                        // 2. if it's not in grace period: the timer isn't running anyway
+                        // TODO:
+
+                        // if this is a new detection, i.e. not in grace period
+                        // store the time now as start time
+                        // TODO:
+                        // else, i.e. detected in grace period
+                        // the start time is not changed
+                        // TODO:
+                    } else {
+                        // body has gone. start the grace period timer
+                        xTimerChangePeriod(_body_detection_grace_period_timer, _body_detection_delay_grace_period_ticks, portMAX_DELAY);
                     }
-                    break;
                 }
+                break;
+            }
 
-                // WiFi
-                // Flash LED?
-                case DEVICE_CONTROL_EVENT_WIFI_DISCONNECTED:
-                    set_led_fade_in_out(LED_1, 1000, 1000);
-                    break;
-                case DEVICE_CONTROL_EVENT_WIFI_ASSOCIATED:
-                    set_led_flash(LED_1, 100);
-                    break;
-                case DEVICE_CONTROL_EVENT_WIFI_CONNECTED:
-                    set_led_on(LED_1);
-                    timeman_start();
-                    break;
-                case DEVICE_CONTROL_EVENT_WIFI_CONNECTING:
-                    set_led_flash(LED_1, 300);
-                    break;
-                case DEVICE_CONTROL_EVENT_WIFI_FAILED:
-                    break;
-                default:
-                    break;
+            // WiFi
+            // Flash LED?
+            case DEVICE_CONTROL_EVENT_WIFI_DISCONNECTED:
+                set_led_fade_in_out(LED_1, 1000, 1000);
+                break;
+            case DEVICE_CONTROL_EVENT_WIFI_ASSOCIATED:
+                set_led_flash(LED_1, 100);
+                break;
+            case DEVICE_CONTROL_EVENT_WIFI_CONNECTED:
+                set_led_on(LED_1);
+                timeman_start();
+                break;
+            case DEVICE_CONTROL_EVENT_WIFI_CONNECTING:
+                set_led_flash(LED_1, 300);
+                break;
+            case DEVICE_CONTROL_EVENT_WIFI_FAILED:
+                break;
+            default:
+                break;
             }
         }
     }
@@ -172,32 +164,24 @@ static void read_config_from_nvs()
 
     err = nvs_get_u8(_nvs_config_handle, NVS_KEY_CONFIG_BODY_DETECTION_ENABLED, &u8bodydet_enabled);
     _config.body_detection_enabled = u8bodydet_enabled;
-    if (err != ESP_OK)
-    {
+    if (err != ESP_OK) {
         ESP_LOGE(LOG_TAG_DEVICE_CONTROL, "failed to read NVS config fan body detection enabled: %s", esp_err_to_name(err));
         _config.body_detection_enabled = BODY_DETECTION_DEFAULT_ENABLED;
-        if (err == ESP_ERR_NVS_NOT_FOUND)
-        {
+        if (err == ESP_ERR_NVS_NOT_FOUND) {
             write_nvs_config_body_detection_enabled(BODY_DETECTION_DEFAULT_ENABLED);
         }
-    }
-    else
-    {
+    } else {
         ESP_LOGI(LOG_TAG_DEVICE_CONTROL, "config - body detection: %s", u8bodydet_enabled ? "enabled" : "disabled");
     }
 
     err = nvs_get_u32(_nvs_config_handle, NVS_KEY_CONFIG_BODY_DETECTION_GRACE_PERIOD, &_config.body_detection_delay_seconds);
-    if (err != ESP_OK)
-    {
+    if (err != ESP_OK) {
         ESP_LOGE(LOG_TAG_DEVICE_CONTROL, "failed to read NVS config body detection delay: %s", esp_err_to_name(err));
         _config.body_detection_delay_seconds = BODY_DETECTION_DEFAULT_GRACE_PERIOD_SECONDS;
-        if (err == ESP_ERR_NVS_NOT_FOUND)
-        {
+        if (err == ESP_ERR_NVS_NOT_FOUND) {
             write_nvs_config_body_detection_grace_period(BODY_DETECTION_DEFAULT_GRACE_PERIOD_SECONDS);
         }
-    }
-    else
-    {
+    } else {
         ESP_LOGI(LOG_TAG_DEVICE_CONTROL, "config - body detection delay: %d", _config.body_detection_delay_seconds);
     }
 }
@@ -208,10 +192,10 @@ void init_device_control_logic()
 
     _body_detection_delay_grace_period_ticks = _config.body_detection_delay_seconds * 1000 / portTICK_PERIOD_MS;
     _body_detection_grace_period_timer = xTimerCreate("body_detection_timer",
-                                               _body_detection_delay_grace_period_ticks,
-                                               pdFALSE,
-                                               (void *)0,
-                                               body_detection_grace_period_timeout);
+        _body_detection_delay_grace_period_ticks,
+        pdFALSE,
+        (void*)0,
+        body_detection_grace_period_timeout);
 
     _device_control_event_queue = xQueueCreate(20, sizeof(device_control_event));
 }
@@ -221,7 +205,7 @@ void start_device_control_logic()
     xTaskCreate(device_control_task, "device_control_task", 4096, NULL, 0, NULL);
 }
 
-void device_control_send_event(device_control_event *event)
+void device_control_send_event(device_control_event* event)
 {
     xQueueSend(_device_control_event_queue, event, portMAX_DELAY);
 }

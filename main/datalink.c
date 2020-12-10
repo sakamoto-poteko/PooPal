@@ -27,14 +27,15 @@
 #include "esp_log.h"
 
 #include "global.h"
+
 #include "datalink.h"
-#include "status.h"
 #include "devicecontrollogic.h"
+#include "status.h"
 
 esp_mqtt_client_handle_t __mqtt_client;
 
 static void subscribe_mqtt_topics(esp_mqtt_client_handle_t client);
-static void process_downlink_data(const char *topic, int topic_len, const char *data, int data_len);
+static void process_downlink_data(const char* topic, int topic_len, const char* data, int data_len);
 
 static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event)
 {
@@ -102,12 +103,12 @@ void publish_device_status()
         return;
 
     int msg_id = esp_mqtt_client_publish(__mqtt_client, MQTT_BODY_DETECTION_PUBLISH_TOPIC,
-                                     __device_status.body_detected ? "true" : "false", 0, 1, 0);
+        __device_status.body_detected ? "true" : "false", 0, 1, 0);
     UNUSED(msg_id);
 }
 
 // For dev/debug only
-static void process_body_detection_enabled_downlink(const char *data, int data_len)
+static void process_body_detection_enabled_downlink(const char* data, int data_len)
 {
     device_control_event event = {};
 
@@ -126,7 +127,7 @@ static void process_body_detection_enabled_downlink(const char *data, int data_l
     ESP_LOGE(LOG_TAG_MQTT, "invalid body detection enabled received: %.*s", data_len, data);
 }
 
-static void process_body_detection_delay_downlink(const char *data, int data_len)
+static void process_body_detection_delay_downlink(const char* data, int data_len)
 {
     char delay_str[data_len + 1];
     strncpy(delay_str, data, data_len)[data_len] = 0;
@@ -142,7 +143,7 @@ static void process_body_detection_delay_downlink(const char *data, int data_len
     }
 }
 
-static void process_downlink_data(const char *topic, int topic_len, const char *data, int data_len)
+static void process_downlink_data(const char* topic, int topic_len, const char* data, int data_len)
 {
     int result = 0;
 

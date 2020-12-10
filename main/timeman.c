@@ -23,13 +23,14 @@
 // <END LICENSE>
 
 #include <string.h>
-#include <time.h>
 #include <sys/time.h>
+#include <time.h>
 
 #include "esp_log.h"
 #include "esp_sntp.h"
 
 #include "global.h"
+
 #include "timeman.h"
 
 static bool _is_time_set = false;
@@ -46,7 +47,7 @@ bool timeman_is_time_set()
         struct tm timeinfo;
         time(&now);
         localtime_r(&now, &timeinfo);
-        
+
         // Is time set? If not, tm_year will be (1970 - 1900).
         if (timeinfo.tm_year < (2020 - 1900)) {
             // time is not set yet
@@ -58,27 +59,26 @@ bool timeman_is_time_set()
     }
 }
 
-static void time_sync_notification_cb(struct timeval *tv)
+static void time_sync_notification_cb(struct timeval* tv)
 {
     sntp_sync_status_t sync_status = sntp_get_sync_status();
     switch (sync_status) {
-        case SNTP_SYNC_STATUS_RESET:
-            ESP_LOGI(LOG_TAG_TIMEMAN, "waiting for system time to be set...");
-            break;
-        case SNTP_SYNC_STATUS_COMPLETED:
-        {
-            time_t now = 0;
-            struct tm timeinfo = { 0 };
-            time(&now);
-            localtime_r(&now, &timeinfo);
-            timeman_is_time_set();
-            ESP_LOGI(LOG_TAG_TIMEMAN, "system time synced: %d-%02d-%02d %02d:%02d:%02d", 
-                     timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
-            break;
-        }
-        case SNTP_SYNC_STATUS_IN_PROGRESS:
-            ESP_LOGI(LOG_TAG_TIMEMAN, "syncing system time...");
-            break;
+    case SNTP_SYNC_STATUS_RESET:
+        ESP_LOGI(LOG_TAG_TIMEMAN, "waiting for system time to be set...");
+        break;
+    case SNTP_SYNC_STATUS_COMPLETED: {
+        time_t now = 0;
+        struct tm timeinfo = { 0 };
+        time(&now);
+        localtime_r(&now, &timeinfo);
+        timeman_is_time_set();
+        ESP_LOGI(LOG_TAG_TIMEMAN, "system time synced: %d-%02d-%02d %02d:%02d:%02d",
+            timeinfo.tm_year + 1900, timeinfo.tm_mon + 1, timeinfo.tm_mday, timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+        break;
+    }
+    case SNTP_SYNC_STATUS_IN_PROGRESS:
+        ESP_LOGI(LOG_TAG_TIMEMAN, "syncing system time...");
+        break;
     }
 }
 

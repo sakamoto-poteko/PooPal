@@ -22,20 +22,20 @@
  **************************************************************************/
 // <END LICENSE>
 
-
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
 #include "global.h"
-#include "status.h"
-#include "datalink.h"
+
 #include "bodydetection.h"
+#include "datalink.h"
+#include "status.h"
 
 #include "status.h"
 
 DeviceStatus __device_status = {};
 
-void collect_device_status_task(void *pvParameters)
+void collect_device_status_task(void* pvParameters)
 {
     UNUSED(pvParameters);
     const TickType_t xDelay = DEVICE_STATUS_COLLECT_INTERVAL_MS / portTICK_PERIOD_MS;
@@ -46,7 +46,7 @@ void collect_device_status_task(void *pvParameters)
     }
 }
 
-void publish_device_status_task(void *pvParameters)
+void publish_device_status_task(void* pvParameters)
 {
     UNUSED(pvParameters);
     const TickType_t xDelay = DEVICE_STATUS_PUBLISH_INTERVAL_MS / portTICK_PERIOD_MS;
