@@ -47,18 +47,18 @@
 
 #define BODY_DETECTION_PIN 21
 #define BODY_DETECTION_DEFAULT_ENABLED true
-#define BODY_DETECTION_DEFAULT_GRACE_PERIOD_SECONDS 60
-#define BODY_DETECTION_LOW_ACTIVE false // Inverted?
+#define BODY_DETECTION_DEFAULT_GRACE_PERIOD_SECONDS 5
+#define BODY_DETECTION_LOW_ACTIVE true // Inverted?
 
 #define DEVICE_STATUS_PUBLISH_INTERVAL_MS 2000
 
-#define LOG_TAG_WIFI "wifi"
+#define LOG_TAG_WIFI "app.wifi"
 #define LOG_TAG_APP "app"
-#define LOG_TAG_MQTT "mqtt"
-#define LOG_TAG_DEVICE_CONTROL "devctrl"
-#define LOG_TAG_BODY_DETECTION "bodydet"
-#define LOG_TAG_LED "led"
-#define LOG_TAG_TIMEMAN "timeman"
+#define LOG_TAG_MQTT "app.mqtt"
+#define LOG_TAG_DEVICE_CONTROL "app.devctrl"
+#define LOG_TAG_BODY_DETECTION "app.bodydet"
+#define LOG_TAG_LED "app.led"
+#define LOG_TAG_TIMEMAN "app.timeman"
 
 #define UNUSED(x) (void)(x)
 #define fldsiz(name, field) \
@@ -70,6 +70,8 @@ inline static float smooth_average(float current, float previous)
 {
     return SMOOTH_AVERAGE_WEIGHT * current + (1 - SMOOTH_AVERAGE_WEIGHT) * previous;
 }
+
+#include "creddef.h"
 
 #ifndef WIFI_SSID
 #error "Define `WIFI_SSID' in build environment variable"

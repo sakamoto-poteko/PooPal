@@ -87,7 +87,7 @@ void app_main()
     init_device_control_logic();
     init_body_detection();
     init_wifi();
-    init_mqtt();
+    init_datalink(true, true);
 
     const unsigned char ssid[] = WIFI_SSID;
     const unsigned char cred[] = WIFI_PASS;
@@ -98,7 +98,7 @@ void app_main()
     start_wifi();
 
     connect_wifi();
-    start_mqtt();
+    start_datalink();
 
     // Start task to collect fan info, idle task
     xTaskCreate(collect_device_status_task, "collect_device_status_task", 4096, NULL, 0, NULL);

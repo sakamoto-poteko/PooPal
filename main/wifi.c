@@ -55,13 +55,15 @@ static void wifi_event_handler(void* arg, esp_event_base_t event_base, int32_t e
     device_control_event evt;
 
     if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) { // started
-        esp_wifi_connect();
         ESP_LOGI(LOG_TAG_WIFI, "WiFi started");
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) { // disconnected
         xEventGroupClearBits(wifi_event_group, WIFI_CONNECTED_BIT);
         __device_status.wifi_status = WIFI_STATUS_DISCONNECTED;
 
-        ESP_LOGI(LOG_TAG_WIFI, "WiFi disconnected");
+        const wifi_event_sta_disconnected_t *event = event_data;
+        char ssid[33];
+        strncpy(ssid, (const char *)event->ssid, event->ssid_len)[event->ssid_len] = 0;
+        ESP_LOGI(LOG_TAG_WIFI, "WiFi disconnected: SSID %s, reason: %u", ssid, event->reason);
 
         evt.event_type = DEVICE_CONTROL_EVENT_WIFI_DISCONNECTED;
         device_control_send_event(&evt);
@@ -102,10 +104,8 @@ void init_wifi(void)
     wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_wifi_init(&cfg));
 
-    esp_event_handler_instance_t instance_any_id;
-    esp_event_handler_instance_t instance_got_ip;
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL, &instance_any_id));
-    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL, &instance_got_ip));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &wifi_event_handler, NULL, NULL));
+    ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &wifi_event_handler, NULL, NULL));
 
     ESP_ERROR_CHECK(esp_wifi_set_storage(WIFI_STORAGE_FLASH));
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));

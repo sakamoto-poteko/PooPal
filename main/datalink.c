@@ -24,6 +24,9 @@
 
 #include <stdlib.h>
 
+#include "freertos/FreeRTOS.h"
+#include "freertos/queue.h"
+
 #include "esp_log.h"
 
 #include "global.h"
@@ -32,8 +35,18 @@
 #include "devicecontrollogic.h"
 #include "status.h"
 
-esp_mqtt_client_handle_t __mqtt_client;
+typedef struct datalink_config_t {
+ bool enable_mqtt;
+ bool enable_azure_iot;
+ esp_mqtt_client_handle_t mqtt_client;
+ xQueueHandle datalink_event_queue;
+} datalink_config;
 
+static datalink_config _config;
+
+
+static void init_mqtt(void);
+static void start_mqtt(void);
 static void subscribe_mqtt_topics(esp_mqtt_client_handle_t client);
 static void process_downlink_data(const char* topic, int topic_len, const char* data, int data_len);
 
@@ -88,13 +101,13 @@ void init_mqtt(void)
         // .user_context = (void *)your_context
     };
 
-    __mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
+    _config.mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
     __device_status.datalink_status = DATALINK_STATUS_DISCONNECTED;
 }
 
 void start_mqtt(void)
 {
-    esp_mqtt_client_start(__mqtt_client);
+    esp_mqtt_client_start(_config.mqtt_client);
 }
 
 void publish_device_status()
@@ -102,7 +115,7 @@ void publish_device_status()
     if (__device_status.datalink_status != DATALINK_STATUS_CONNECTED)
         return;
 
-    int msg_id = esp_mqtt_client_publish(__mqtt_client, MQTT_BODY_DETECTION_PUBLISH_TOPIC,
+    int msg_id = esp_mqtt_client_publish(_config.mqtt_client, MQTT_BODY_DETECTION_PUBLISH_TOPIC,
         __device_status.body_detected ? "true" : "false", 0, 1, 0);
     UNUSED(msg_id);
 }
@@ -165,4 +178,28 @@ static void process_downlink_data(const char* topic, int topic_len, const char* 
 static void subscribe_mqtt_topics(esp_mqtt_client_handle_t client)
 {
     esp_mqtt_client_subscribe(client, MQTT_CONFIG_SUBSCRIBE_TOPIC, 0);
+}
+
+void datalink_send_event(data_link_event *event)
+{
+    ESP_LOGE(LOG_TAG_MQTT, "data link event received. not impelemented yet");
+}
+
+void init_datalink(bool mqtt_enabled, bool azure_iot_enabled)
+{
+    _config.enable_mqtt = mqtt_enabled;
+    _config.enable_azure_iot = azure_iot_enabled;
+
+    _config.datalink_event_queue = xQueueCreate(20, sizeof(data_link_event));
+    
+    if (mqtt_enabled) {
+        init_mqtt();
+    }
+}
+
+void start_datalink(void)
+{
+    if (_config.enable_mqtt) {
+        start_mqtt();
+    }
 }

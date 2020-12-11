@@ -23,6 +23,7 @@
 // <END LICENSE>
 
 #include <stdatomic.h>
+#include <time.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/queue.h"
@@ -35,6 +36,7 @@
 #include "global.h"
 
 #include "bodydetection.h"
+#include "datalink.h"
 #include "devicecontrollogic.h"
 #include "led.h"
 #include "timeman.h"
@@ -50,11 +52,16 @@ typedef struct device_control_config_t {
 
 static device_control_config _config;
 
-static bool _body_detected = false;
 static xQueueHandle _device_control_event_queue;
 static TimerHandle_t _body_detection_grace_period_timer;
 static nvs_handle _nvs_config_handle;
 static TickType_t _body_detection_delay_grace_period_ticks;
+
+typedef struct body_detection_info_t {
+    time_t start_time; // 0 if out of grace period
+} body_detection_info;
+
+static body_detection_info _body_detection_info;
 
 inline static void write_nvs_config_body_detection_enabled(bool enabled)
 {
@@ -69,10 +76,24 @@ inline static void write_nvs_config_body_detection_grace_period(uint delay)
 void body_detection_grace_period_timeout(TimerHandle_t xTimer)
 {
     UNUSED(xTimer);
-    _body_detected = false;
-    ESP_LOGI(LOG_TAG_DEVICE_CONTROL, "body detection delay timed out");
+    time_t now;
+    time(&now);
+
+    unsigned int elapsed = now - _body_detection_info.start_time;
+
+    ESP_LOGI(LOG_TAG_DEVICE_CONTROL, "body detection grace period timed out. total time elapsed: %us", elapsed);
 
     // TODO: add it to mqtt send queue
+    data_link_event event = {
+        .event_type = DATA_LINK_EVENT_BODY_DETECTION,
+        .body_detection_event = {
+            .elapsed_second = elapsed,
+            .start_epoch_second = _body_detection_info.start_time }
+    };
+    datalink_send_event(&event);
+
+    // reset
+    _body_detection_info.start_time = 0;
 }
 
 static void device_control_task(void* arg)
@@ -107,25 +128,38 @@ static void device_control_task(void* arg)
             // body detection triggered
             case DEVICE_CONTROL_EVENT_BODY_DETECTION_TRIGGERED: {
                 int detected = get_body_detected();
-                if (_config.body_detection_enabled) {
+                if (_config.body_detection_enabled && timeman_is_time_set()) { // only if time is set
                     if (detected) {
-                        // set body detected to true
-                        _body_detected = true;
-
                         // stop the grace period timer, since
                         // 1. if it's in grace period now: we're merging two detections
                         // 2. if it's not in grace period: the timer isn't running anyway
                         // TODO:
+                        xTimerStop(_body_detection_grace_period_timer, portMAX_DELAY);
 
-                        // if this is a new detection, i.e. not in grace period
-                        // store the time now as start time
-                        // TODO:
-                        // else, i.e. detected in grace period
-                        // the start time is not changed
-                        // TODO:
+                        if (_body_detection_info.start_time == 0) {
+                            // if this is a new detection, i.e. not in grace period
+                            // store the time now as start time
+                            // TODO:
+                            time_t now;
+                            time(&now);
+                            _body_detection_info.start_time = now;
+                            ESP_LOGI(LOG_TAG_DEVICE_CONTROL, "body detected out of grace period. start time of current detection is reset");
+                        } else {
+                            // else, i.e. detected in grace period
+                            // the start time is not changed
+                            // TODO:
+                            // do nothing
+                            ESP_LOGI(LOG_TAG_DEVICE_CONTROL, "body detected in grace period. start time of current detection kept");
+                        }
                     } else {
                         // body has gone. start the grace period timer
-                        xTimerChangePeriod(_body_detection_grace_period_timer, _body_detection_delay_grace_period_ticks, portMAX_DELAY);
+
+                        // xTimerChangePeriod is used becaust that the grace period could be changed. nowhere changes the timer period to new value
+                        // this function will start the dormant timer as well
+
+                        ESP_LOGI(LOG_TAG_DEVICE_CONTROL, "body no longer detected. grace period timer started");
+                        //xTimerChangePeriod(_body_detection_grace_period_timer, _body_detection_delay_grace_period_ticks, portMAX_DELAY);
+                        xTimerStart(_body_detection_grace_period_timer, portMAX_DELAY);
                     }
                 }
                 break;
@@ -141,6 +175,8 @@ static void device_control_task(void* arg)
                 break;
             case DEVICE_CONTROL_EVENT_WIFI_CONNECTED:
                 set_led_on(LED_1);
+
+                // start timeman to get NTP time
                 timeman_start();
                 break;
             case DEVICE_CONTROL_EVENT_WIFI_CONNECTING:

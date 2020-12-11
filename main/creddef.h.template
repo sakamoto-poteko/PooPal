@@ -22,36 +22,10 @@
  **************************************************************************/
 // <END LICENSE>
 
-#ifndef DATALINK_H
-#define DATALINK_H
+#ifndef CREDENTIALS_H
+#define CREDENTIALS_H
 
-#include <stdint.h>
+#define WIFI_SSID "YourSSID"
+#define WIFI_PASS "YourSecretPassword"
 
-#include "mqtt_client.h"
-
-extern esp_mqtt_client_handle_t __mqtt_client;
-
-void init_datalink(bool mqtt_enabled, bool azure_iot_enabled);
-void start_datalink();
-
-void publish_device_status();
-
-typedef enum data_link_event_type_t {
-    DATA_LINK_EVENT_BODY_DETECTION
-} data_link_event_type;
-
-typedef struct data_link_body_detection_event_t {
-    uint64_t start_epoch_second;
-    uint64_t elapsed_second;
-} data_link_body_detection_event;
-
-typedef struct data_link_event_t {
-    data_link_event_type event_type;
-    union {
-        data_link_body_detection_event body_detection_event;
-    };
-} data_link_event;
-
-void datalink_send_event(data_link_event *event);
-
-#endif // DATALINK_H
+#endif // CREDENTIALS_H

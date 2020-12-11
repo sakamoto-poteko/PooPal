@@ -61,7 +61,7 @@ static void body_detection_task(void* arg)
                 .body_detected = level
             };
             device_control_send_event(&event);
-            ESP_LOGI(LOG_TAG_BODY_DETECTION, "body detection %s", level ? "positive" : "negative");
+            ESP_LOGI(LOG_TAG_BODY_DETECTION, "body detection pin level %s", level ? "hi" : "lo");
         }
     }
 }
