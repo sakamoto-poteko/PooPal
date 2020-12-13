@@ -22,11 +22,15 @@
  **************************************************************************/
 // <END LICENSE>
 
-#ifndef CREDENTIALS_H
-#define CREDENTIALS_H
+#ifndef AZIOT_H
+#define AZIOT_H
 
-#define WIFI_SSID "YourSSID"
-#define WIFI_PASS "YourSecretPassword"
-#define AZIOTHUB_CONNSTR "YourIoTConnStr";
+#include <stdint.h>
 
-#endif // CREDENTIALS_H
+bool aziot_send_str(const char *data);
+bool aziot_send_bin(const uint8_t *data, size_t len);
+bool aziot_init(void);
+void aziot_start(void);
+
+
+#endif

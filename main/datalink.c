@@ -34,6 +34,7 @@
 #include "datalink.h"
 #include "devicecontrollogic.h"
 #include "status.h"
+#include "aziot.h"
 
 typedef struct datalink_config_t {
  bool enable_mqtt;
@@ -44,6 +45,7 @@ typedef struct datalink_config_t {
 
 static datalink_config _config;
 
+static const char datalink_msg_body_detection[] = "{\"start\": %" PRIu64 ",\"elapsed\": %" PRIu64 "}";
 
 static void init_mqtt(void);
 static void start_mqtt(void);
@@ -182,7 +184,7 @@ static void subscribe_mqtt_topics(esp_mqtt_client_handle_t client)
 
 void datalink_send_event(data_link_event *event)
 {
-    ESP_LOGE(LOG_TAG_MQTT, "data link event received. not impelemented yet");
+    xQueueSend(_config.datalink_event_queue, event, portMAX_DELAY);
 }
 
 void init_datalink(bool mqtt_enabled, bool azure_iot_enabled)
@@ -195,6 +197,40 @@ void init_datalink(bool mqtt_enabled, bool azure_iot_enabled)
     if (mqtt_enabled) {
         init_mqtt();
     }
+
+    if (azure_iot_enabled) {
+        aziot_init();
+    }
+}
+
+static void datalink_process_body_detection_event(uint64_t start_epoch_second, uint64_t elapsed_second)
+{
+    static const int BUFFER_LEN = 100;
+    char data[BUFFER_LEN + 1];
+    size_t len = snprintf((char *)data, BUFFER_LEN, datalink_msg_body_detection, start_epoch_second, elapsed_second);
+    data[BUFFER_LEN] = 0;
+    aziot_send_str(data);
+    ESP_LOGI(LOG_TAG_MQTT, "sending body detection event, start epoch %" PRIu64 ", duration %" PRIu64 ", msg payload size: %" PRIu32,
+             start_epoch_second, elapsed_second, len);
+}
+
+static void datalink_event_loop_task(void *arg)
+{
+    UNUSED(arg);
+    for (;;) {
+        heap_caps_check_integrity_all(true);
+        data_link_event event = {};
+        if (xQueueReceive(_config.datalink_event_queue, &event, portMAX_DELAY)) {
+            switch (event.event_type) {
+                case DATA_LINK_EVENT_BODY_DETECTION:
+                    datalink_process_body_detection_event(event.body_detection_event.start_epoch_second, event.body_detection_event.elapsed_second);
+                    break;
+                default:
+                    ESP_LOGE(LOG_TAG_MQTT, "uknown datalink event type: %d", event.event_type);
+                    break;
+            }
+        }
+    }
 }
 
 void start_datalink(void)
@@ -202,4 +238,10 @@ void start_datalink(void)
     if (_config.enable_mqtt) {
         start_mqtt();
     }
+
+    if (_config.enable_azure_iot) {
+        aziot_start();
+    }
+
+    xTaskCreate(datalink_event_loop_task, "datalink_event_loop", 4096, NULL, 0, NULL);
 }

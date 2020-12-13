@@ -59,6 +59,8 @@
 #define LOG_TAG_BODY_DETECTION "app.bodydet"
 #define LOG_TAG_LED "app.led"
 #define LOG_TAG_TIMEMAN "app.timeman"
+#define LOG_TAG_AZIOT "app.aziot"
+
 
 #define UNUSED(x) (void)(x)
 #define fldsiz(name, field) \

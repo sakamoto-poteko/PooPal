@@ -17,6 +17,8 @@ set(COMPONENT_SRCS
     "led.c"
     "timeman.h"
     "timeman.c"
+    "aziot.h"
+    "aziot.c"
     "creddef.h"
     )
 set(COMPONENT_ADD_INCLUDEDIRS ".")

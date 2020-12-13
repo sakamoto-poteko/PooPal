@@ -45,9 +45,14 @@
 #define NVS_KEY_CONFIG_BODY_DETECTION_ENABLED "bodydet"
 #define NVS_KEY_CONFIG_BODY_DETECTION_GRACE_PERIOD "bodydetdelay"
 
+typedef struct body_detection_info_t {
+    time_t start_time; // 0 if out of grace period
+} body_detection_info;
+
 typedef struct device_control_config_t {
     bool body_detection_enabled;
     uint body_detection_delay_seconds;
+    body_detection_info body_detection_info;
 } device_control_config;
 
 static device_control_config _config;
@@ -57,11 +62,8 @@ static TimerHandle_t _body_detection_grace_period_timer;
 static nvs_handle _nvs_config_handle;
 static TickType_t _body_detection_delay_grace_period_ticks;
 
-typedef struct body_detection_info_t {
-    time_t start_time; // 0 if out of grace period
-} body_detection_info;
 
-static body_detection_info _body_detection_info;
+
 
 inline static void write_nvs_config_body_detection_enabled(bool enabled)
 {
@@ -79,7 +81,7 @@ void body_detection_grace_period_timeout(TimerHandle_t xTimer)
     time_t now;
     time(&now);
 
-    unsigned int elapsed = now - _body_detection_info.start_time;
+    unsigned int elapsed = now - _config.body_detection_info.start_time;
 
     ESP_LOGI(LOG_TAG_DEVICE_CONTROL, "body detection grace period timed out. total time elapsed: %us", elapsed);
 
@@ -88,12 +90,12 @@ void body_detection_grace_period_timeout(TimerHandle_t xTimer)
         .event_type = DATA_LINK_EVENT_BODY_DETECTION,
         .body_detection_event = {
             .elapsed_second = elapsed,
-            .start_epoch_second = _body_detection_info.start_time }
+            .start_epoch_second = _config.body_detection_info.start_time }
     };
     datalink_send_event(&event);
 
     // reset
-    _body_detection_info.start_time = 0;
+    _config.body_detection_info.start_time = 0;
 }
 
 static void device_control_task(void* arg)
@@ -136,13 +138,13 @@ static void device_control_task(void* arg)
                         // TODO:
                         xTimerStop(_body_detection_grace_period_timer, portMAX_DELAY);
 
-                        if (_body_detection_info.start_time == 0) {
+                        if (_config.body_detection_info.start_time == 0) {
                             // if this is a new detection, i.e. not in grace period
                             // store the time now as start time
                             // TODO:
                             time_t now;
                             time(&now);
-                            _body_detection_info.start_time = now;
+                            _config.body_detection_info.start_time = now;
                             ESP_LOGI(LOG_TAG_DEVICE_CONTROL, "body detected out of grace period. start time of current detection is reset");
                         } else {
                             // else, i.e. detected in grace period
@@ -224,6 +226,7 @@ static void read_config_from_nvs()
 
 void init_device_control_logic()
 {
+    memset(&_config, 0, sizeof _config);
     read_config_from_nvs();
 
     _body_detection_delay_grace_period_ticks = _config.body_detection_delay_seconds * 1000 / portTICK_PERIOD_MS;
